@@ -1,7 +1,7 @@
 from flask import Flask
 app = Flask(__name__)
 
-@app.route("/hello")
+@app.route("/hey")
 def index():
     return "Hello from the Hello app!"
 

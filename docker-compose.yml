@@ -19,7 +19,7 @@ services:
       MYSQL_DATABASE: users
       MYSQL_ROOT_PASSWORD: secret
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - ./db_user:/var/lib/mysql
 
@@ -52,7 +52,7 @@ services:
       MYSQL_USER: flask_user
       MYSQL_PASSWORD: flask_password_secure123
     ports:
-      - "3307:3306"
+      - "3308:3306"
     volumes:
       - ./mysql_service:/var/lib/mysql
       - ./mysql_service:/var/log/mysql
