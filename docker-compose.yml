@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  traefik:
+    image: traefik:v2.11
+    command:
+      - --configFile=/etc/traefik/traefik.yml
+    ports:
+      - "8081:80" 
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml
+
+  service_tests:
+    build: ./service_tests
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.service_tests.rule=Host(`service_tests.localhost`)"
+      - "traefik.http.routers.service_tests.entrypoints=web"
+      - "traefik.http.services.service_tests.loadbalancer.server.port=5000"
