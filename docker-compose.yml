@@ -24,9 +24,7 @@ services:
       - ./db_user:/var/lib/mysql
 
   user_service:
-    build: .
-    ports:
-      - "5000:5000"
+    build: ./user_service
     environment:
       - DB_HOST=db
       - DB_NAME=users
@@ -35,7 +33,7 @@ services:
       - DATABASE_URI=mysql+pymysql://root:secret@db:3306/users
       - JWT_SECRET_KEY=informations-sur-les-utilisateurs
     depends_on:
-      - db
+      - db_user
     volumes:
       - .:/app
     labels:
@@ -54,10 +52,10 @@ services:
       MYSQL_USER: flask_user
       MYSQL_PASSWORD: flask_password_secure123
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
-      - mysql_service:/var/lib/mysql
-      - mysql_service:/var/log/mysql
+      - ./mysql_service:/var/lib/mysql
+      - ./mysql_service:/var/log/mysql
     restart: unless-stopped
     healthcheck:
       test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-p$${MYSQL_ROOT_PASSWORD}" ]
@@ -67,12 +65,10 @@ services:
 
 
   channel_service:
-    build: 
-      context: .
-      dockerfile: Dockerfile
+    build: ./channel_service
     container_name: channels_flask_app
     depends_on:
-      mysql:
+      mysql_service:
         condition: service_healthy
     environment:
       FLASK_ENV: production
@@ -82,10 +78,6 @@ services:
       MYSQL_USER: flask_user
       MYSQL_PASSWORD: flask_password_secure123
       SECRET_KEY: your-super-secret-jwt-key-change-in-production
-    ports:
-      - "5000:5000"
-    networks:
-      - channels_network
     restart: unless-stopped
     volumes:
       - ./logs:/app/logs
@@ -106,16 +98,14 @@ services:
       MYSQL_USER: user
       MYSQL_PASSWORD: password
     volumes:
-      - message-db:/var/lib/mysql
+      - ./message-db:/var/lib/mysql
 
   message_service:
-    build: .
-    env_file:
-      - .env
+    build: ./message_service
+    #env_file:
+    #  - .env
     depends_on:
       - message-db
-    ports:
-      - "5000:5000"
     restart: on-failure
 
     labels:
@@ -123,3 +113,11 @@ services:
       - "traefik.http.routers.message_service.rule=PathPrefix(`/`)"
       - "traefik.http.routers.message_service.entrypoints=web"
       - "traefik.http.services.message_service.loadbalancer.server.port=5000"
+
+  stats_service:
+    build: ./stats_service
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.stats_service.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.stats_service.entrypoints=web"
+      - "traefik.http.services.stats_service.loadbalancer.server.port=5000"

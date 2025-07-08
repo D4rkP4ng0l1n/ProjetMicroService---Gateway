@@ -45,17 +45,17 @@ def get_active_channels():
     channels = generate_channels()
     return jsonify(channels)
 
-@app.route("/hourly-activity", methods=["GET"])
+@app.route("/stats//hourly-activity", methods=["GET"])
 def get_hourly_activity():
     activity = generate_hourly_activity()
     return jsonify(activity)
 
-@app.route("/messages-per-user", methods=["GET"])
+@app.route("/stats//messages-per-user", methods=["GET"])
 def get_messages_per_user():
     messages = generate_messages_per_user()
     return jsonify(messages)
 
-@app.route("/top-reacted-messages", methods=["GET"])
+@app.route("/stats//top-reacted-messages", methods=["GET"])
 def get_top_reacted_messages():
     messages = generate_top_reacted_messages()
     return jsonify(messages)
