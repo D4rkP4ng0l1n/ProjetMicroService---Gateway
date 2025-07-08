@@ -30,7 +30,7 @@ def generate_top_reacted_messages():
     ]
     return sorted(messages, key=lambda x: x["reactions"], reverse=True)
 
-@app.route("/", methods=["GET"])
+@app.route("/stats", methods=["GET"])
 def get_stats():
     stats = {
         "visitors": random.randint(100, 10000),
@@ -40,7 +40,7 @@ def get_stats():
     }
     return jsonify(stats)
 
-@app.route("/active-channels", methods=["GET"])
+@app.route("/stats/active-channels", methods=["GET"])
 def get_active_channels():
     channels = generate_channels()
     return jsonify(channels)

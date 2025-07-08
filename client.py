@@ -2,7 +2,7 @@ import requests
 
 def main():
     try:
-        hello_resp = requests.get("http://localhost:8081/stats",headers={"Host": "service_tests.localhost"})
+        hello_resp = requests.get("http://localhost:80/stats",headers={"Host": "service_tests.localhost"})
 
         print("Réponse du service Hello :", hello_resp.text)
 

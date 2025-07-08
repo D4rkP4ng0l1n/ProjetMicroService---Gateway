@@ -6,8 +6,7 @@ services:
     command:
       - --configFile=/etc/traefik/traefik.yml
     ports:
-      - "80:80"
-      - "8080:8080"
+      - "8081:80"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml
@@ -16,6 +15,6 @@ services:
     build: ./service_tests
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.flask-app.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.service_tests.rule=PathPrefix(`/`)"
       - "traefik.http.routers.service_tests.entrypoints=web"
       - "traefik.http.services.service_tests.loadbalancer.server.port=5000"
