@@ -9,17 +9,38 @@ USER_SERVICE = "user_service"
 MESSAGE_SERVICE = "message_service"
 CHANNEL_SERVICE = "channel_service"
 STATS_SERVICE = "stats_service"
+
+
+# -------------------- AUTH ----------------------- #
+JWT_TOKEN = None
+# ------------------------------------------------- #
+
+
 # ------------------------------------------------- #
 
 
 # -------------------- FONCTIONS ------------------ #
 
 def do_request(method, route, host, **kwargs):
+    global JWT_TOKEN
     try:
-        res = requests.request(method, f"{BASE_URL}{route}", headers={"Host": f"{host}.localhost"}, **kwargs)
+        print(f"{BASE_URL}{route}")
+        print(f"{host}.localhost")
+
+        headers = {"Host": f"{host}.localhost"}
+        if JWT_TOKEN:
+            headers["Authorization"] = f"Bearer {JWT_TOKEN}"
+
+        res = requests.request(method, f"{BASE_URL}{route}", headers=headers, **kwargs)
         print(f"\n[{res.status_code}] {method} {route}")
         try:
             data = res.json()
+
+            # Si un token est présent dans la réponse, on le stocke
+            if "token" in data:
+                JWT_TOKEN = data["token"]
+                print("Jeton JWT reçu et stocké.")
+
             if data.get("status") == "ok":
                 print("Succès :")
                 print_json(data["reponse"])
@@ -34,6 +55,7 @@ def do_request(method, route, host, **kwargs):
         print("Connexion au service impossible.")
     except Exception as e:
         print("Erreur inattendue :", e)
+
         
 
 def commands_list():
