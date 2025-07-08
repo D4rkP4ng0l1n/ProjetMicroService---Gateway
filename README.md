@@ -24,8 +24,8 @@
 ---
 
 # 📁 Services développés par notre groupe
-stats-service : service interne qui agrège des données statistiques sur les messages, utilisateurs et canaux.
-client : Une interface permettant d'accéder aux différents micro-service
+- stats-service : service interne qui agrège des données statistiques sur les messages, utilisateurs et canaux.
+- client : Une interface permettant d'accéder aux différents micro-service
 
 ---
 
