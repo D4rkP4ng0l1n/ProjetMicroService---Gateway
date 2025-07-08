@@ -44,9 +44,10 @@ def commands_list():
     print("/seen              -> Dernière activité d'un utilisateur")
     print("/ison              -> Utilisateurs connectés")
     print("/make-admin        -> Donner le rôle admin")
-    print("/user/*            -> Routes dynamiques sur utilisateur")
-    print("/msg/*             -> Routes dynamiques sur messages")
-    print("/channel/*         -> Routes dynamiques sur canaux")
+    print("/user              -> Routes dynamiques sur utilisateur")
+    print("/msg               -> Routes dynamiques sur messages")
+    print("/channel           -> Routes dynamiques sur canaux")
+    print("/get_channel       -> Liste des canaux publics")
     print("/stats             -> Statistiques")
     print("/help              -> Affiche cette aide")
     print("/exit              -> Quitter CanaDuck\n")
@@ -106,10 +107,6 @@ def msg():
 def channel():
     do_request("GET", "/channel", CHANNEL_SERVICE)
 
-
-def user() :
-    pass
-
 def stats():
     print("\nStatistiques disponibles :")
     print("1 -> Canaux les plus actifs")
@@ -127,6 +124,41 @@ def stats():
         do_request("GET", path_map[choix], STATS_SERVICE)
 
 
+def interactive_subroute(category):
+    known_routes = {
+        "user": [
+            "user/<pseudo>/password", "user/status", "user/avatar/<pseudo>",
+            "user/roles/<pseudo> (GET)", "user/roles/<pseudo> (POST)",
+            "user/<pseudo> (DELETE)", "make-admin/<pseudo>"
+        ],
+        "msg": [
+            "msg", "msg?channel", "msg/reaction (POST)", "msg/reaction (DELETE)",
+            "msg/<id> (PUT)", "msg/<id> (DELETE)",
+            "msg/thread/<id>", "msg/pinned?channel", "msg/private", "msg/search"
+        ],
+        "channel": [
+            "channel (POST)", "channel/<nom>/users",
+            "channel/<nom> (PATCH)", "channel/<nom>/topic", "channel/<nom>/mode",
+            "channel/<nom>/config", "channel/<nom>/invite", "channel/<nom>/ban",
+            "channel/<nom> (DELETE)"
+        ]
+    }
+
+    print(f"\n===== Routes disponibles pour {category.upper()} =====")
+    for route in known_routes.get(category, []):
+        print(f"/{route}")
+    print("Tapez /<route> ou 'exit' pour revenir.\n")
+
+    while True:
+        sub = input(f"/{category} >>> ").strip()
+        if sub.lower() in ["exit", "quit"]:
+            break
+        if sub.startswith("/"):
+            sub = sub[1:]  # enlever le /
+        full_path = f"/{category}/{sub}".replace("//", "/")
+        dynamic_route(full_path)
+
+
 def dynamic_route(path):
     segments = path.strip("/").split("/")
     if not segments:
@@ -135,68 +167,114 @@ def dynamic_route(path):
 
     category = segments[0]
     subroute = "/" + "/".join(segments[1:])
-    method = input("Méthode HTTP (GET, POST, PATCH, DELETE) ? > ").strip().upper()
+    full_path = f"/{category}{subroute}"
 
-    # Routes connues avec prompts personnalisés
-    known_routes = {
-        "user": {
-            "/user/status": {
-                "method": "POST",
-                "params": [("pseudo", str), ("status", str)]
-            },
-            "/user/roles": {
-                "method": "POST",
-                "params": [("pseudo", str), ("role", str)]
-            },
-            "/user/<pseudo>/password": {
-                "method": "PATCH",
-                "params": [("ancien", str), ("nouveau", str)]
-            }
-        },
-        "msg": {
-            "/msg/reaction": {
-                "method": "POST",
-                "params": [("message_id", int), ("emoji", str)]
-            },
-            "/msg/private": {
-                "method": "GET",
-                "params": [("from", str), ("to", str)]
-            }
-        },
-        "channel": {}
-    }
-
-    payload = {}
-
-    if category in known_routes:
-        matched = False
-        for route_key, route_info in known_routes[category].items():
-            if route_key in path or "<pseudo>" in route_key and len(segments) >= 3:
-                print(f"Remplissage automatique des champs pour {path}")
-                json_data = {}
-                for key, typ in route_info["params"]:
-                    val = input(f"{key} ? > ").strip()
-                    json_data[key] = typ(val)
-                payload = {"json": json_data}
-                matched = True
-                break
-
-        if not matched:
-            # Si la route n'est pas connue alors on a une erreur
-            pass
-
-    # Exécuter la requête
+    # Détection du service cible
     service = {
         "user": USER_SERVICE,
         "msg": MESSAGE_SERVICE,
         "channel": CHANNEL_SERVICE
     }.get(category)
 
-    if service:
-        route = f"/{category}{subroute}"
-        do_request(method, route, service, **payload)
-    else:
+    if not service:
         print("Service inconnu.")
+        return
+
+    # Définition des routes connues
+    raw_known_routes = {
+        "user": {
+            "/user/<pseudo>/password": ("PATCH", [("ancien", str), ("nouveau", str)]),
+            "/user/status": ("POST", [("pseudo", str), ("status", str)]),
+            "/user/avatar/<pseudo>": ("GET", []),
+            "/user/roles/<pseudo>": ("GET", []),
+            "/user/roles/<pseudo>": ("POST", [("role", str)]),
+            "/user/<pseudo>": ("DELETE", []),
+            "/make-admin/<pseudo>": ("POST", [])
+        },
+        "msg": {
+            "/msg": ("POST", [("channel", str), ("text", str)]),
+            "/msg?channel": ("GET", [("channel", str)]),
+            "/msg/reaction": ("POST", [("message_id", int), ("emoji", str)]),
+            "/msg/reaction": ("DELETE", [("message_id", int), ("emoji", str)]),
+            "/msg/<id>": ("PUT", [("text", str)]),
+            "/msg/<id>": ("DELETE", []),
+            "/msg/thread/<id>": ("GET", []),
+            "/msg/pinned?channel": ("GET", [("channel", str)]),
+            "/msg/private": ("GET", [("from", str), ("to", str)]),
+            "/msg/search": ("GET", [("q", str)])
+        },
+        "channel": {
+            "/channel": ("POST", [("name", str), ("private", lambda x: x.lower() == "true")]),
+            "/channel/<nom>/users": ("GET", []),
+            "/channel/<nom>": ("PATCH", [("topic", str), ("mode", str)]),
+            "/channel/<nom>/topic": ("POST", [("topic", str)]),
+            "/channel/<nom>/mode": ("POST", [("mode", str)]),
+            "/channel/<nom>/config": ("GET", []),
+            "/channel/<nom>/invite": ("POST", [("pseudo", str)]),
+            "/channel/<nom>/ban": ("POST", [("pseudo", str), ("reason", str)]),
+            "/channel/<nom>": ("DELETE", [])
+        }
+    }
+
+    # Affichage des routes connues
+    if category in raw_known_routes:
+        print(f"\nRoutes connues pour {category.upper()} :")
+        for route, (method, params) in raw_known_routes[category].items():
+            param_str = ", ".join(p[0] for p in params) if params else "—"
+            print(f"  {method:6} {route:40}  ← {param_str}")
+        print()
+
+    # Trouver toutes les routes qui matchent structurellement
+    candidates = []
+    for route_template, (method, params) in raw_known_routes.get(category, {}).items():
+        route_parts = route_template.strip("/").split("/")
+        if len(route_parts) != len(segments):
+            continue
+
+        is_match = all(
+            t == p or (t.startswith("<") and t.endswith(">"))
+            for t, p in zip(route_parts, segments)
+        )
+
+        if is_match:
+            candidates.append((route_template, method, params))
+
+    if not candidates:
+        print("Aucune route connue ne correspond.")
+        return
+
+    # Si plusieurs méthodes possibles, demander laquelle utiliser
+    methods_possible = list(set(m for _, m, _ in candidates))
+    if len(methods_possible) > 1:
+        print(f"Plusieurs méthodes disponibles pour {full_path} : {', '.join(methods_possible)}")
+        method = input("Méthode HTTP à utiliser ? > ").strip().upper()
+    else:
+        method = methods_possible[0]
+
+    # Trouver les bons paramètres pour cette méthode
+    for route_template, m, params in candidates:
+        if m == method:
+            json_data = {}
+            for key, conv in params:
+                val = input(f"{key} ? > ").strip()
+                try:
+                    json_data[key] = conv(val)
+                except Exception:
+                    print(f"Erreur : valeur invalide pour {key}.")
+                    return
+
+            if method in ["POST", "PATCH", "PUT"]:
+                do_request(method, full_path, service, json=json_data)
+            elif method == "GET":
+                full_path += "?" + "&".join(f"{k}={v}" for k, v in json_data.items())
+                do_request(method, full_path, service)
+            else:
+                do_request(method, full_path, service)
+
+            return
+
+    print("Méthode non prise en charge pour cette route.")
+
 
         
 # -------------------- BOUCLE PRINCIPALE ------------------ #
@@ -214,8 +292,8 @@ def main():
 
         command = cmd[1:]
         
-        if ( command.startswith("user") or command.startswith("channel") or command.startswith("msg")) :
-            dynamic_route('/' + command)
+        if command in ["user", "msg", "channel"] :
+            interactive_subroute(command)
         else :
             match command:
                 case "register": register()
@@ -225,7 +303,7 @@ def main():
                 case "ison": ison()
                 case "make-admin": make_admin()
                 case "msg": msg()
-                case "channel": channel()
+                case "get_channel": channel()
                 case "stats": stats()
                 case "help": commands_list()
                 case "exit":
