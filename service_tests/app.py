@@ -1,9 +1,17 @@
 from flask import Flask
 app = Flask(__name__)
 
-@app.route("/")
+@app.route("/hello")
 def index():
     return "Hello from the Hello app!"
+
+@app.route("/hello/bro")
+def hello() :
+    return "Hello my petit frero !"
+
+@app.route("/stats")
+def stats() :
+    return "Hello my petit frero (stats) !"
 
 
 if __name__ == "__main__":
