@@ -1,13 +1,42 @@
+# -------------------- IMPORTS -------------------- #
+from flask import Flask, request, jsonify
+from flasgger import Swagger
 import requests
+# ------------------------------------------------- #
 
-def main():
-    try:
-        hello_resp = requests.get("http://localhost:8081", headers={"Host": "service_tests.localhost"})
+app = Flask(__name__)
+swagger = Swagger(app)
 
-        print("Réponse du service Hello :", hello_resp.text)
+# -------------------- METHODES GET -------------------- #
 
-    except requests.exceptions.RequestException as e:
+@app.route("/fullinfo?user=<string:user>&channel=<int:idchan>", methods=["GET"])
+def get_full_info() :
+    pass
+
+@app.route("/stats", methods=["GET"])
+def get_stats() :
+    pass
+
+@app.route("/hello/*", methods=["GET"])
+def get_test_hello() :
+    try :
+        res = requests.get("http://localhost:8082", headers={"Host": "hello.localhost"})
+        print("Réponse du service Hello :", res.text)
+        
+    except requests.exceptions.RequestException as e :
         print("Erreur lors de l'appel aux services :", e)
 
+# -------------------- METHODES POST -------------------- #
+
+@app.route("/register", methods=["POST"])
+def register() :
+    pass
+
+@app.route("/login", methods=["POST"])
+def login() :
+    pass
+
+# ------------------------------------------------- #
+
 if __name__ == "__main__":
-    main()
+    app.run(host="0.0.0.0", port=5000)
