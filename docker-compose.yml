@@ -15,6 +15,6 @@ services:
     build: ./service_tests
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.service_tests.rule=PathPrefix(`/hello`)"
+      - "traefik.http.routers.service_tests.rule=PathPrefix(`/`)"
       - "traefik.http.routers.service_tests.entrypoints=web"
       - "traefik.http.services.service_tests.loadbalancer.server.port=5000"

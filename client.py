@@ -1,12 +1,5 @@
 # -------------------- IMPORTS -------------------- #
-from flask import Flask, request, jsonify
-from flasgger import Swagger
 import requests
-# ------------------------------------------------- #
-
-app = Flask(__name__)
-swagger = Swagger(app)
-
 # ------------------------------------------------- #
 
 BASE_URL = "http://localhost:8081"
@@ -20,6 +13,9 @@ def main():
 
         res2 = requests.get(f"{BASE_URL}/hello/bro", headers={"Host": "service_test.localhost"})
         print(f"/hello/bro -> {res2.text}")
+        
+        res3 = requests.get(f"{BASE_URL}/stats", headers={"Host": "service_test.localhost"})
+        print(f"/stats -> {res3.text}")
 
     except requests.exceptions.ConnectionError:
         print("Erreur : impossible de se connecter au serveur.")
