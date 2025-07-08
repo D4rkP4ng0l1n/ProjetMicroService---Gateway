@@ -6,15 +6,120 @@ services:
     command:
       - --configFile=/etc/traefik/traefik.yml
     ports:
-      - "8081:80" 
+      - "8081:80"
+      - "443:443" 
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml
 
-  service_tests:
-    build: ./service_tests
+  db_user:
+    image: mysql:8
+    restart: always
+    environment:
+      MYSQL_DATABASE: users
+      MYSQL_ROOT_PASSWORD: secret
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./db_user:/var/lib/mysql
+
+  user_service:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - DB_HOST=db
+      - DB_NAME=users
+      - DB_USER=root
+      - DB_PASSWORD=secret
+      - DATABASE_URI=mysql+pymysql://root:secret@db:3306/users
+      - JWT_SECRET_KEY=informations-sur-les-utilisateurs
+    depends_on:
+      - db
+    volumes:
+      - .:/app
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.service_tests.rule=Host(`service_tests.localhost`)"
-      - "traefik.http.routers.service_tests.entrypoints=web"
-      - "traefik.http.services.service_tests.loadbalancer.server.port=5000"
+      - "traefik.http.routers.user_service.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.user_service.entrypoints=web"
+      - "traefik.http.services.user_service.loadbalancer.server.port=5000"
+
+
+  mysql_service:
+    image: mysql:8.0
+    container_name: channels_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password_secure123
+      MYSQL_DATABASE: channels_db
+      MYSQL_USER: flask_user
+      MYSQL_PASSWORD: flask_password_secure123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_service:/var/lib/mysql
+      - mysql_service:/var/log/mysql
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-p$${MYSQL_ROOT_PASSWORD}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  channel_service:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: channels_flask_app
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      FLASK_ENV: production
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: channels_db
+      MYSQL_USER: flask_user
+      MYSQL_PASSWORD: flask_password_secure123
+      SECRET_KEY: your-super-secret-jwt-key-change-in-production
+    ports:
+      - "5000:5000"
+    networks:
+      - channels_network
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.channel_service.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.channel_service.entrypoints=web"
+      - "traefik.http.services.channel_service.loadbalancer.server.port=5000"
+
+
+  message-db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: messages_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    volumes:
+      - message-db:/var/lib/mysql
+
+  message_service:
+    build: .
+    env_file:
+      - .env
+    depends_on:
+      - message-db
+    ports:
+      - "5000:5000"
+    restart: on-failure
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.message_service.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.message_service.entrypoints=web"
+      - "traefik.http.services.message_service.loadbalancer.server.port=5000"
