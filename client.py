@@ -98,7 +98,7 @@ def make_admin():
 
 
 def msg():
-    channel = input("Nom du canal ? > ").strip()
+    channel = input("Nom du canal ? > ").strip()    
     if channel:
         do_request("GET", f"/msg?channel={channel}", MESSAGE_SERVICE)
 
@@ -106,6 +106,9 @@ def msg():
 def channel():
     do_request("GET", "/channel", CHANNEL_SERVICE)
 
+
+def user() :
+    pass
 
 def stats():
     print("\nStatistiques disponibles :")
@@ -132,25 +135,75 @@ def dynamic_route(path):
 
     category = segments[0]
     subroute = "/" + "/".join(segments[1:])
-
     method = input("Méthode HTTP (GET, POST, PATCH, DELETE) ? > ").strip().upper()
-    data = input("Données JSON (ou vide) ? > ").strip()
-    payload = {"json": eval(data)} if data else {}
 
-    if category == "user":
-        do_request(method, f"/user{subroute}", USER_SERVICE, **payload)
-    elif category == "msg":
-        do_request(method, f"/msg{subroute}", MESSAGE_SERVICE, **payload)
-    elif category == "channel":
-        do_request(method, f"/channel{subroute}", CHANNEL_SERVICE, **payload)
+    # Routes connues avec prompts personnalisés
+    known_routes = {
+        "user": {
+            "/user/status": {
+                "method": "POST",
+                "params": [("pseudo", str), ("status", str)]
+            },
+            "/user/roles": {
+                "method": "POST",
+                "params": [("pseudo", str), ("role", str)]
+            },
+            "/user/<pseudo>/password": {
+                "method": "PATCH",
+                "params": [("ancien", str), ("nouveau", str)]
+            }
+        },
+        "msg": {
+            "/msg/reaction": {
+                "method": "POST",
+                "params": [("message_id", int), ("emoji", str)]
+            },
+            "/msg/private": {
+                "method": "GET",
+                "params": [("from", str), ("to", str)]
+            }
+        },
+        "channel": {}
+    }
+
+    payload = {}
+
+    if category in known_routes:
+        matched = False
+        for route_key, route_info in known_routes[category].items():
+            if route_key in path or "<pseudo>" in route_key and len(segments) >= 3:
+                print(f"Remplissage automatique des champs pour {path}")
+                json_data = {}
+                for key, typ in route_info["params"]:
+                    val = input(f"{key} ? > ").strip()
+                    json_data[key] = typ(val)
+                payload = {"json": json_data}
+                matched = True
+                break
+
+        if not matched:
+            # Si la route n'est pas connue alors on a une erreur
+            pass
+
+    # Exécuter la requête
+    service = {
+        "user": USER_SERVICE,
+        "msg": MESSAGE_SERVICE,
+        "channel": CHANNEL_SERVICE
+    }.get(category)
+
+    if service:
+        route = f"/{category}{subroute}"
+        do_request(method, route, service, **payload)
     else:
         print("Service inconnu.")
+
         
 # -------------------- BOUCLE PRINCIPALE ------------------ #
 
 def main():
     print("==================== CanaDuck ====================\n")
-    print("Bienvenue sur CanaDuck 🦆 !")
+    print("Bienvenue sur CanaDuck !")
     commands_list()
 
     while True:
@@ -160,24 +213,27 @@ def main():
             continue
 
         command = cmd[1:]
-
-        match command:
-            case "register": register()
-            case "login": login()
-            case "whois": whois()
-            case "seen": seen()
-            case "ison": ison()
-            case "make-admin": make_admin()
-            case "msg": msg()
-            case "channel": channel()
-            case "stats": stats()
-            case "help": commands_list()
-            case "exit":
-                print("\nMerci d'avoir utilisé CanaDuck 🦆")
-                print("==================================================")
-                break
-            case _:
-                print("Commande inconnue, tape /help.")
+        
+        if ( command.startswith("user") or command.startswith("channel") or command.startswith("msg")) :
+            dynamic_route('/' + command)
+        else :
+            match command:
+                case "register": register()
+                case "login": login()
+                case "whois": whois()
+                case "seen": seen()
+                case "ison": ison()
+                case "make-admin": make_admin()
+                case "msg": msg()
+                case "channel": channel()
+                case "stats": stats()
+                case "help": commands_list()
+                case "exit":
+                    print("\nMerci d'avoir utilisé CanaDuck 🦆")
+                    print("==================================================")
+                    break
+                case _:
+                    print("Commande inconnue, tape /help.")
 
 # ------------------------------------------------- #
     
